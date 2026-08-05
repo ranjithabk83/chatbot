@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student Chatbot</title>
+
+    <style>
+        body {
+            background: #0f172a;
+            color: white;
+            font-family: Arial;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .chat-container {
+            width: 400px;
+            height: 600px;
+            background: #111827;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+        }
+
+        h2 {
+            text-align: center;
+        }
+
+        #chat {
+            flex: 1;
+            overflow-y: auto;
+            border: 1px solid #333;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .user {
+            color: #38bdf8;
+            margin: 5px 0;
+        }
+
+        .bot {
+            color: #22c55e;
+            margin: 5px 0;
+        }
+
+        .input-area {
+            display: flex;
+            gap: 5px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+        }
+
+        button {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .send-btn {
+            background: #22c55e;
+        }
+
+        .upload-btn {
+            background: #3b82f6;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="chat-container">
+
+    <h2>🎓 Student Chatbot</h2>
+
+    <div id="chat"></div>
+
+    <div class="input-area">
+        <input type="file" id="file" style="display:none">
+        <button class="upload-btn" onclick="document.getElementById('file').click()">📎</button>
+
+        <input type="text" id="msg" placeholder="Type your question...">
+
+        <button class="send-btn" onclick="send()">➤</button>
+    </div>
+
+</div>
+
+<script>
+    const chatBox = document.getElementById("chat");
+
+    // 📎 Upload PDF
+    document.getElementById("file").addEventListener("change", function() {
+        let file = this.files[0];
+        let formData = new FormData();
+        formData.append("file", file);
+
+        fetch("/upload", {
+            method: "POST",
+            body: formData
+        })
+        .then(res => res.text())
+        .then(data => {
+            chatBox.innerHTML += `<p class="bot">📄 ${data}</p>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+        });
+    });
+
+    // 💬 Send message
+    function send(){
+        let msgInput = document.getElementById("msg");
+        let msg = msgInput.value.trim();
+
+        if(msg === "") return;
+
+        // Show user message
+        chatBox.innerHTML += `<p class="user"><b>You:</b> ${msg}</p>`;
+
+        fetch("/ask", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({message: msg})
+        })
+        .then(res => res.json())
+        .then(data => {
+            chatBox.innerHTML += `<p class="bot"><b>Bot:</b> ${data.reply}</p>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+        })
+        .catch(err => {
+            chatBox.innerHTML += `<p class="bot">⚠ Error</p>`;
+        });
+
+        msgInput.value = ""; // ✅ clear input
+    }
+
+    // ⌨ Enter key support
+    document.getElementById("msg").addEventListener("keypress", function(e){
+        if(e.key === "Enter"){
+            send();
+        }
+    });
+</script>
+
+</body>
+</html>
