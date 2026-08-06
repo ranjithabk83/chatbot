@@ -58,3 +58,12 @@ The chatbot can answer general questions and interact with uploaded documents.
 - Scikit-learn
 
 ## 📂 Project Structure
+
+│
+├── app.py
+├── requirements.txt
+├── templates/
+│ └── index.html
+├── uploads/
+├── .gitignore
+└── README.md
