@@ -6,93 +6,132 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from groq import Groq
 
-# 🔐 Load env
+# Load env
+
 load_dotenv()
 
-# ✅ Flask app
-app = Flask(__name__)
+app = Flask(**name**)
 
-# 🔑 API Key
+# API Key
+
 api_key = os.getenv("GROQ_API_KEY")
-
 if not api_key:
-    raise ValueError("GROQ_API_KEY not found. Check your .env file!")
+raise ValueError("GROQ_API_KEY not found!")
 
 client = Groq(api_key=api_key)
 
-# 📁 Upload folder
+# Upload folder
+
 UPLOAD_FOLDER = "uploads"
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+os.makedirs(UPLOAD_FOLDER)
 
-# 🧠 Store PDF content
 pdf_sentences = []
 
-# 📄 Read PDF
-def read_pdf(file_path):
-    text = ""
-    with open(file_path, "rb") as file:
-        reader = PyPDF2.PdfReader(file)
-        for page in reader.pages:
-            if page.extract_text():
-                text += page.extract_text()
-    return text
+# Read PDF
 
-# 🧠 Process PDF
-def process_pdf(file_path):
-    global pdf_sentences
-    text = read_pdf(file_path)
-    pdf_sentences = text.split(".")
+def read_pdf(path):
+text = ""
+with open(path, "rb") as file:
+reader = PyPDF2.PdfReader(file)
+for page in reader.pages:
+t = page.extract_text()
+if t:
+text += t
+return text
 
+# Process PDF
 
-# 🤖 Chat API
+def process_pdf(path):
+global pdf_sentences
+text = read_pdf(path)
+pdf_sentences = [s.strip() for s in text.split(".") if len(s.strip()) > 20]
+
+# Format response
+
+def format_response(text):
+parts = text.split(". ")
+result = ""
+
+```
+if len(parts) > 0:
+    result += f"📌 <b>Overview:</b><br>{parts[0]}.<br><br>"
+
+if len(parts) > 1:
+    result += "🔹 <b>Key Points:</b><br>"
+    for p in parts[1:4]:
+        result += f"✔ {p}.<br>"
+    result += "<br>"
+
+if len(parts) > 4:
+    result += "💡 <b>Extra:</b><br>"
+    for p in parts[4:]:
+        result += f"- {p}.<br>"
+
+return result
+```
+
+# Chat API
+
 @app.route("/ask", methods=["POST"])
 def ask():
-    user_input = request.json.get("message")
+user_input = request.json.get("message")
 
-    if pdf_sentences:
-        vectorizer = TfidfVectorizer()
-        vectors = vectorizer.fit_transform(pdf_sentences + [user_input])
+```
+if pdf_sentences:
+    vectorizer = TfidfVectorizer()
+    vectors = vectorizer.fit_transform(pdf_sentences + [user_input])
 
-        similarity = cosine_similarity(vectors[-1], vectors[:-1])
-        index = similarity.argmax()
+    similarity = cosine_similarity(vectors[-1], vectors[:-1])
+    index = similarity.argmax()
 
-        response = pdf_sentences[index]
+    response = pdf_sentences[index]
 
-    else:
-        chat = client.chat.completions.create(
-            messages=[{"role": "user", "content": user_input}],
-            model="llama-3.3-70b-versatile"
-        )
-        response = chat.choices[0].message.content
+else:
+    prompt = f"""
+    Answer clearly using structured format.
 
-    return jsonify({"response": response})
+    Rules:
+    - Use headings
+    - Use bullet points
+    - Keep it short
 
+    Question: {user_input}
+    """
 
-# 📤 Upload API
+    chat = client.chat.completions.create(
+        messages=[{"role": "user", "content": prompt}],
+        model="llama-3.3-70b-versatile"
+    )
+
+    response = chat.choices[0].message.content
+
+return jsonify({"response": format_response(response)})
+```
+
+# Upload
+
 @app.route("/upload", methods=["POST"])
 def upload():
-    file = request.files["file"]
+file = request.files.get("file")
 
-    if not file:
-        return jsonify({"error": "No file uploaded"}), 400
+```
+if not file:
+    return jsonify({"error": "No file"}), 400
 
-    path = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
-    file.save(path)
+path = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
+file.save(path)
 
-    process_pdf(path)
+process_pdf(path)
 
-    return jsonify({"message": "PDF uploaded successfully"})
+return jsonify({"message": "PDF uploaded successfully"})
+```
 
-
-# 🌐 Home
 @app.route("/")
 def home():
-    return render_template("index.html")
+return render_template("index.html")
 
-
-# ▶ Run
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+if **name** == "**main**":
+app.run(debug=True)
