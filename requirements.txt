@@ -4,3 +4,4 @@ python-dotenv
 PyPDF2
 python-docx
 scikit-learn
+gunicorn
