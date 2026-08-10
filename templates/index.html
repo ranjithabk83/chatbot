@@ -7,48 +7,51 @@
         body {
             margin: 0;
             font-family: Arial;
-            background: linear-gradient(135deg, #0f172a, #1e293b);
-            color: white;
             display: flex;
+            background: #0f172a;
+            color: white;
         }
 
-        /* LEFT HISTORY PANEL */
         .history {
             width: 25%;
             height: 100vh;
-            background: rgba(255,255,255,0.05);
-            backdrop-filter: blur(10px);
-            padding: 10px;
             overflow-y: auto;
-            border-right: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.05);
+            padding: 10px;
         }
 
         .history-item {
             padding: 10px;
-            margin: 5px 0;
+            margin: 5px;
             background: rgba(255,255,255,0.1);
             border-radius: 8px;
-            cursor: pointer;
         }
 
-        /* RIGHT CHAT AREA */
         .chat-container {
             width: 75%;
             display: flex;
             flex-direction: column;
         }
 
-        .header {
-            text-align: center;
-            font-size: 22px;
-            padding: 15px;
-            font-weight: bold;
-        }
-
         #chat {
             flex: 1;
-            overflow-y: auto;
             padding: 10px;
+            overflow-y: auto;
+        }
+
+        .user-msg {
+            background: blue;
+            margin: 5px;
+            padding: 10px;
+            border-radius: 10px;
+            text-align: right;
+        }
+
+        .bot-msg {
+            background: gray;
+            margin: 5px;
+            padding: 10px;
+            border-radius: 10px;
         }
 
         .input-area {
@@ -59,60 +62,30 @@
         input {
             flex: 1;
             padding: 10px;
-            border-radius: 10px;
-            border: none;
         }
 
         button {
             padding: 10px;
-            margin-left: 5px;
-            border: none;
-            border-radius: 10px;
-            background: #2563eb;
-            color: white;
-        }
-
-        .user-msg {
-            background: #2563eb;
-            padding: 10px;
-            margin: 5px;
-            border-radius: 10px;
-            text-align: right;
-        }
-
-        .bot-msg {
-            background: rgba(255,255,255,0.1);
-            padding: 10px;
-            margin: 5px;
-            border-radius: 10px;
         }
     </style>
 </head>
 
 <body>
 
-<!-- ✅ HISTORY COLUMN -->
 <div class="history" id="history">
-    <h3>History</h3>
+    <h3>Saved Chats</h3>
 </div>
 
-<!-- ✅ CHAT AREA -->
 <div class="chat-container">
-
-    <div class="header">CHATBOT 💙</div>
-
     <div id="chat"></div>
 
     <div class="input-area">
-        <input type="text" id="msg" placeholder="Ask anything...">
+        <input id="msg">
         <button onclick="send()">Send</button>
     </div>
-
 </div>
 
 <script>
-let historyList = [];
-
 function addMessage(text, sender) {
     const chat = document.getElementById("chat");
 
@@ -121,20 +94,25 @@ function addMessage(text, sender) {
     div.innerHTML = text;
 
     chat.appendChild(div);
-    chat.scrollTop = chat.scrollHeight;
 }
 
-// ✅ ADD TO HISTORY PANEL
-function addToHistory(text) {
+// LOAD FROM DATABASE
+async function loadHistory() {
+    const res = await fetch("/history");
+    const data = await res.json();
+
     const history = document.getElementById("history");
 
-    const item = document.createElement("div");
-    item.className = "history-item";
-    item.innerText = text.substring(0, 30) + "...";
+    data.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "history-item";
+        div.innerText = item[0].substring(0, 30);
 
-    history.appendChild(item);
+        history.appendChild(div);
+    });
 }
 
+// SEND MESSAGE
 async function send() {
     const input = document.getElementById("msg");
     const message = input.value;
@@ -142,27 +120,20 @@ async function send() {
     if (!message) return;
 
     addMessage(message, "user");
-    addToHistory(message); // ✅ store history
-
     input.value = "";
 
-    try {
-        const response = await fetch("/ask", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ message: message })
-        });
+    const res = await fetch("/ask", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({message: message})
+    });
 
-        const data = await response.json();
-
-        addMessage(data.response, "bot");
-
-    } catch (error) {
-        addMessage("❌ Server error", "bot");
-    }
+    const data = await res.json();
+    addMessage(data.response, "bot");
 }
+
+// LOAD ON START
+loadHistory();
 </script>
 
 </body>

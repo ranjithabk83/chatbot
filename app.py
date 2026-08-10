@@ -1,25 +1,54 @@
 from flask import Flask, render_template, request, jsonify
 import os
+import sqlite3
 import PyPDF2
 from dotenv import load_dotenv
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from groq import Groq
 
-# Load environment variables
 load_dotenv()
 
-# FIXED HERE ✅
 app = Flask(__name__)
 
-# API Key
+# ---------------- DATABASE ----------------
+def init_db():
+    conn = sqlite3.connect("chat.db")
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS chats (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_message TEXT,
+            bot_response TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+init_db()
+
+def save_chat(user, bot):
+    conn = sqlite3.connect("chat.db")
+    c = conn.cursor()
+    c.execute("INSERT INTO chats (user_message, bot_response) VALUES (?, ?)", (user, bot))
+    conn.commit()
+    conn.close()
+
+def get_chats():
+    conn = sqlite3.connect("chat.db")
+    c = conn.cursor()
+    c.execute("SELECT user_message, bot_response FROM chats ORDER BY id DESC")
+    data = c.fetchall()
+    conn.close()
+    return data
+
+# ---------------- AI ----------------
 api_key = os.getenv("GROQ_API_KEY")
 if not api_key:
     raise ValueError("GROQ_API_KEY not found!")
 
 client = Groq(api_key=api_key)
 
-# Upload folder
 UPLOAD_FOLDER = "uploads"
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
@@ -28,7 +57,6 @@ if not os.path.exists(UPLOAD_FOLDER):
 
 pdf_sentences = []
 
-# Read PDF
 def read_pdf(path):
     text = ""
     with open(path, "rb") as file:
@@ -39,13 +67,11 @@ def read_pdf(path):
                 text += t
     return text
 
-# Process PDF
 def process_pdf(path):
     global pdf_sentences
     text = read_pdf(path)
     pdf_sentences = [s.strip() for s in text.split(".") if len(s.strip()) > 20]
 
-# Format response
 def format_response(text):
     parts = text.split(". ")
     result = ""
@@ -66,7 +92,8 @@ def format_response(text):
 
     return result
 
-# Chat API
+# ---------------- ROUTES ----------------
+
 @app.route("/ask", methods=["POST"])
 def ask():
     user_input = request.json.get("message")
@@ -84,11 +111,6 @@ def ask():
         prompt = f"""
         Answer clearly using structured format.
 
-        Rules:
-        - Use headings
-        - Use bullet points
-        - Keep it short
-
         Question: {user_input}
         """
 
@@ -99,28 +121,22 @@ def ask():
 
         response = chat.choices[0].message.content
 
-    return jsonify({"response": format_response(response)})
+    formatted = format_response(response)
 
-# Upload route
-@app.route("/upload", methods=["POST"])
-def upload():
-    file = request.files.get("file")
+    # ✅ SAVE TO DATABASE
+    save_chat(user_input, formatted)
 
-    if not file:
-        return jsonify({"error": "No file"}), 400
+    return jsonify({"response": formatted})
 
-    path = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
-    file.save(path)
+# GET CHAT HISTORY FROM DB
+@app.route("/history")
+def history():
+    chats = get_chats()
+    return jsonify(chats)
 
-    process_pdf(path)
-
-    return jsonify({"message": "PDF uploaded successfully"})
-
-# Home page
 @app.route("/")
 def home():
     return render_template("index.html")
 
-# FIXED HERE ✅
 if __name__ == "__main__":
     app.run(debug=True)
