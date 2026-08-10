@@ -1,141 +1,104 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<title>my chatbot UI</title>
+    <title>Chatbot</title>
 
-<style>
-body {
-    margin: 0;
-    font-family: 'Segoe UI', sans-serif;
-    background: #0f172a;
-    color: white;
-    display: flex;
-    height: 100vh;
-}
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            color: white;
+            display: flex;
+        }
 
-/* Sidebar */
-.sidebar {
-    width: 250px;
-    background: #020617;
-    padding: 15px;
-    display: flex;
-    flex-direction: column;
-    border-right: 1px solid rgba(255,255,255,0.1);
-}
+        /* LEFT HISTORY PANEL */
+        .history {
+            width: 25%;
+            height: 100vh;
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            padding: 10px;
+            overflow-y: auto;
+            border-right: 1px solid rgba(255,255,255,0.1);
+        }
 
-.sidebar h2 {
-    font-size: 18px;
-    margin-bottom: 20px;
-}
+        .history-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            cursor: pointer;
+        }
 
-.new-chat {
-    background: #2563eb;
-    border: none;
-    padding: 10px;
-    border-radius: 10px;
-    color: white;
-    cursor: pointer;
-    margin-bottom: 15px;
-}
+        /* RIGHT CHAT AREA */
+        .chat-container {
+            width: 75%;
+            display: flex;
+            flex-direction: column;
+        }
 
-.history {
-    flex: 1;
-    overflow-y: auto;
-}
+        .header {
+            text-align: center;
+            font-size: 22px;
+            padding: 15px;
+            font-weight: bold;
+        }
 
-.history div {
-    padding: 10px;
-    border-radius: 8px;
-    margin-bottom: 8px;
-    cursor: pointer;
-}
+        #chat {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
 
-.history div:hover {
-    background: rgba(59,130,246,0.2);
-}
+        .input-area {
+            display: flex;
+            padding: 10px;
+        }
 
-/* Main Chat */
-.main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-}
+        input {
+            flex: 1;
+            padding: 10px;
+            border-radius: 10px;
+            border: none;
+        }
 
-/* Header */
-.header {
-    padding: 15px;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-    text-align: center;
-    font-size: 18px;
-}
+        button {
+            padding: 10px;
+            margin-left: 5px;
+            border: none;
+            border-radius: 10px;
+            background: #2563eb;
+            color: white;
+        }
 
-/* Chat Area */
-#chat {
-    flex: 1;
-    overflow-y: auto;
-    padding: 20px;
-}
+        .user-msg {
+            background: #2563eb;
+            padding: 10px;
+            margin: 5px;
+            border-radius: 10px;
+            text-align: right;
+        }
 
-/* Messages */
-.message {
-    max-width: 700px;
-    margin: 10px auto;
-    padding: 12px 15px;
-    border-radius: 12px;
-}
-
-.user {
-    background: #2563eb;
-    text-align: right;
-}
-
-.bot {
-    background: #1e293b;
-}
-
-/* Input */
-.input-area {
-    padding: 15px;
-    border-top: 1px solid rgba(255,255,255,0.1);
-    display: flex;
-    gap: 10px;
-}
-
-input {
-    flex: 1;
-    padding: 12px;
-    border-radius: 10px;
-    border: none;
-    outline: none;
-    background: #1e293b;
-    color: white;
-}
-
-button {
-    padding: 10px 15px;
-    border: none;
-    border-radius: 10px;
-    background: #2563eb;
-    color: white;
-    cursor: pointer;
-}
-</style>
-
+        .bot-msg {
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            margin: 5px;
+            border-radius: 10px;
+        }
+    </style>
 </head>
+
 <body>
 
-<!-- Sidebar -->
-<div class="sidebar">
-    <h2>💬 Chats</h2>
-    <button class="new-chat" onclick="newChat()">+ New Chat</button>
-    
-    <div class="history" id="history"></div>
+<!-- ✅ HISTORY COLUMN -->
+<div class="history" id="history">
+    <h3>History</h3>
 </div>
 
-<!-- Main Chat -->
-<div class="main">
-    
+<!-- ✅ CHAT AREA -->
+<div class="chat-container">
+
     <div class="header">CHATBOT 💙</div>
 
     <div id="chat"></div>
@@ -148,71 +111,57 @@ button {
 </div>
 
 <script>
-let chats = [];
-let currentChat = [];
+let historyList = [];
 
-function send() {
-    let input = document.getElementById("msg");
-    let chatBox = document.getElementById("chat");
+function addMessage(text, sender) {
+    const chat = document.getElementById("chat");
 
-    if (input.value.trim() === "") return;
+    const div = document.createElement("div");
+    div.className = sender === "user" ? "user-msg" : "bot-msg";
+    div.innerHTML = text;
 
-    let msg = input.value;
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+}
 
-    // User message
-    let userDiv = document.createElement("div");
-    userDiv.className = "message user";
-    userDiv.innerText = msg;
-    chatBox.appendChild(userDiv);
+// ✅ ADD TO HISTORY PANEL
+function addToHistory(text) {
+    const history = document.getElementById("history");
 
-    currentChat.push("You: " + msg);
+    const item = document.createElement("div");
+    item.className = "history-item";
+    item.innerText = text.substring(0, 30) + "...";
 
-    // Bot reply
-    let botDiv = document.createElement("div");
-    botDiv.className = "message bot";
-    botDiv.innerText = "Thinking...";
-    chatBox.appendChild(botDiv);
+    history.appendChild(item);
+}
 
-    setTimeout(() => {
-        botDiv.innerText = "This is AI response 🤖";
-        currentChat.push("Bot: This is AI response 🤖");
-        saveHistory();
-    }, 800);
+async function send() {
+    const input = document.getElementById("msg");
+    const message = input.value;
+
+    if (!message) return;
+
+    addMessage(message, "user");
+    addToHistory(message); // ✅ store history
 
     input.value = "";
-    chatBox.scrollTop = chatBox.scrollHeight;
-}
 
-function newChat() {
-    if (currentChat.length > 0) {
-        chats.push([...currentChat]);
+    try {
+        const response = await fetch("/ask", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ message: message })
+        });
+
+        const data = await response.json();
+
+        addMessage(data.response, "bot");
+
+    } catch (error) {
+        addMessage("❌ Server error", "bot");
     }
-    currentChat = [];
-    document.getElementById("chat").innerHTML = "";
-}
-
-function saveHistory() {
-    let history = document.getElementById("history");
-    history.innerHTML = "";
-
-    chats.forEach((chat, index) => {
-        let item = document.createElement("div");
-        item.innerText = chat[0];
-        item.onclick = () => loadChat(index);
-        history.appendChild(item);
-    });
-}
-
-function loadChat(index) {
-    let chatBox = document.getElementById("chat");
-    chatBox.innerHTML = "";
-
-    chats[index].forEach(msg => {
-        let div = document.createElement("div");
-        div.className = msg.startsWith("You") ? "message user" : "message bot";
-        div.innerText = msg;
-        chatBox.appendChild(div);
-    });
 }
 </script>
 
